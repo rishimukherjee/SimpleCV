@@ -18,8 +18,16 @@ class FrameBufferThread(threading.Thread):
     by your camera are fresh.
     """
     def run(self):
+        print( "Camera is running. ")
         global _cameras
+        count = 0;
         while (1):
+            print( "count "+str(count))
+            count = count + 1;
+            if( count == 100 ):
+                print ("ASPLODEY!!!")
+                self.join()
+                return
             for cam in _cameras:
                 if cam.pygame_camera:
                     cam.pygame_buffer = cam.capture.get_image(cam.pygame_buffer)
