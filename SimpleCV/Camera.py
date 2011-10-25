@@ -17,16 +17,15 @@ class FrameBufferThread(threading.Thread):
     causes problems at low sample rates.  This makes sure the frames returned
     by your camera are fresh.
     """
+    state = True;
+        
     def run(self):
+        self.state = True
         print( "Camera is running. ")
         global _cameras
-        count = 0;
         while (1):
-            print( "count "+str(count))
-            count = count + 1;
-            if( count == 100 ):
+            if( not self.state ):
                 print ("ASPLODEY!!!")
-                self.join()
                 return
             for cam in _cameras:
                 if cam.pygame_camera:
@@ -35,6 +34,9 @@ class FrameBufferThread(threading.Thread):
                     cv.GrabFrame(cam.capture)
             time.sleep(0.04)    #max 25 fps, if you're lucky
 
+    def stop(self):
+        self.state = False;
+        
 
 
 class FrameSource:
@@ -47,6 +49,9 @@ class FrameSource:
     def __init__(self):
         return
     
+
+
+        
     def getPropery(self, p):
         return None
   
@@ -262,7 +267,10 @@ class Camera(FrameSource):
     thread = ""
     pygame_camera = False
     pygame_buffer = ""
-  
+    index = 0
+    threaded = True
+    properties = {}
+    cfile = ""
   
     prop_map = {"width": cv.CV_CAP_PROP_FRAME_WIDTH,
         "height": cv.CV_CAP_PROP_FRAME_HEIGHT,
@@ -275,8 +283,11 @@ class Camera(FrameSource):
     #human readable to CV constant property mapping
 
     def __init__(self, camera_index = 0, prop_set = {}, threaded = True, calibrationfile = ''):
-        global _cameras
-        global _camera_polling_thread
+
+        self.index = camera_index
+        self.properties = prop_set
+        self.threaded = threaded
+        self.cfile = calibrationfile
         """
         In the camera onstructor, camera_index indicates which camera to connect to
         and props is a dictionary which can be used to set any camera attributes
@@ -287,49 +298,79 @@ class Camera(FrameSource):
         debuffer the camera.  If you specify True, the camera is essentially 'on' at
         all times.  If you specify off, you will have to manage camera buffers.
         """
-
+        self._start(threaded)
         #This fixes bug with opencv not being able to grab frames from webcams on linux
-        self.capture = cv.CaptureFromCAM(camera_index)
-        if platform.system() == "Linux" and (prop_set.has_key("height") or cv.GrabFrame(self.capture) == False):
+
+    def _start(self,threaded):
+        global _cameras
+        global _camera_polling_thread       
+        self.capture = cv.CaptureFromCAM(self.index)
+        if platform.system() == "Linux" and (self.properties.has_key("height") or cv.GrabFrame(self.capture) == False):
             import pygame.camera
             pygame.camera.init()
             threaded = True  #pygame must be threaded
-            if(prop_set.has_key("height") and prop_set.has_key("width")):
-                self.capture = pygame.camera.Camera("/dev/video" + str(camera_index), (prop_set['width'], prop_set['height']))
+            if(self.properties.has_key("height") and self.properties.has_key("width")):
+                self.capture = pygame.camera.Camera("/dev/video" + str(self.index), (self.properties['width'], self.properties['height']))
             else:
-                self.capture = pygame.camera.Camera("/dev/video" + str(camera_index))
+                self.capture = pygame.camera.Camera("/dev/video" + str(self.index))
                 
             self.capture.start()
             time.sleep(0)
             self.pygame_buffer = self.capture.get_image()
             self.pygame_camera = True
         else:
-            self.threaded = False
             if (platform.system() == "Windows"):
                 threaded = False
+                self.threaded = False
         
             if (not self.capture):
                 return None 
 
             #set any properties in the constructor
-            for p in prop_set.keys():
+            for p in self.properties.keys():
                 if p in self.prop_map:
-                    cv.SetCaptureProperty(self.capture, self.prop_map[p], prop_set[p])
+                    cv.SetCaptureProperty(self.capture, self.prop_map[p], self.properties[p])
 
         if (threaded):
             self.threaded = True
+            print("starting thread")
             _cameras.append(self)
             if (not _camera_polling_thread):
                 _camera_polling_thread = FrameBufferThread()
                 _camera_polling_thread.daemon = True
                 _camera_polling_thread.start()
                 time.sleep(0) #yield to thread
+        else:
+            self.threaded = False
         
-        if calibrationfile:
-            self.loadCalibration(calibrationfile)
-          
+        if self.cfile:
+            self.loadCalibration(self.cfile)
         
     #todo -- make these dynamic attributes of the Camera class
+    def stop(self,threaded=True):
+        """
+        Stop the camera thread - camera will need to be re-initialized
+        This kills the thread: http://bit.ly/oCzEXu
+        """
+        if( self.threaded ):
+            _camera_polling_thread.stop()
+            time.sleep(0.1)
+            del self.capture
+            self.capture = None
+        elif( self.capture is not None):
+            del self.capture
+            self.capture = None
+    
+    def restart(self,threaded=True):
+        """
+        restart the camera thread after it has been stoped.
+        """
+        if( self.capture is None):
+            self._start(threaded)
+        else:
+            self.stop()
+            selp._start(threaded)
+    
     def getProperty(self, prop):
         """
         Retrieve the value of a given property, wrapper for cv.GetCaptureProperty
@@ -361,6 +402,10 @@ class Camera(FrameSource):
 
         We're working on how to solve this problem.
         """
+        if( self.capture is None ):
+            print( "No device to capture.")
+            warnings.warn("Camera has been stopped - please call restart.")
+            return None
         
         if self.pygame_camera:
             return Image(self.pygame_buffer.copy())
@@ -372,6 +417,8 @@ class Camera(FrameSource):
         newimg = cv.CreateImage(cv.GetSize(frame), cv.IPL_DEPTH_8U, 3)
         cv.Copy(frame, newimg)
         return Image(newimg, self)
+        
+
 
 class VirtualCamera(FrameSource):
     """
