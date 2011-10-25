@@ -34,6 +34,7 @@ tmpimg = "../sampleimages/tmpimg.jpg"
 greyscaleimage = "../sampleimages/greyscale.jpg"
 logo = "../sampleimages/logo.png"
 logo_inverted = "../sampleimages/logo_inverted.png"
+ocrimage = "../sampleimages/ocr-test.png"
 
 #These function names are required by nose test, please leave them as is
 def setup_context():
@@ -920,6 +921,17 @@ def test_blob_methods():
         b.right(first)
         b.contains(first)
         b.overlaps(first)
+
+
+def test_detection_ocr():
+    img = Image(ocrimage)
+    print "TESTING OCR"
+    foundtext = img.readText()
+    print foundtext
+    if(len(foundtext) <= 1):
+        assert False
+    else:
+        pass
         
 def test_template_match():
     source = Image("../sampleimages/templatetest.png")

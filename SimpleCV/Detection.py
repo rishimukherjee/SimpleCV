@@ -354,7 +354,7 @@ class Chessboard(Feature):
         q = sqform[1][3] 
         s = (a + b + c + d)/2.0 
         return 2 * sqrt((s - a) * (s - b) * (s - c) * (s - d) - (a * c + b * d + p * q) * (a * c + b * d - p * q) / 4)
-  
+ 
 
 class TemplateMatch(Feature):
     """
