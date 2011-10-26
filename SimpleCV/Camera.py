@@ -21,11 +21,9 @@ class FrameBufferThread(threading.Thread):
         
     def run(self):
         self.state = True
-        print( "Camera is running. ")
         global _cameras
         while (1):
             if( not self.state ):
-                print ("ASPLODEY!!!")
                 return
             for cam in _cameras:
                 if cam.pygame_camera:
@@ -271,6 +269,7 @@ class Camera(FrameSource):
     threaded = True
     properties = {}
     cfile = ""
+    running = ""
   
     prop_map = {"width": cv.CV_CAP_PROP_FRAME_WIDTH,
         "height": cv.CV_CAP_PROP_FRAME_HEIGHT,
@@ -288,6 +287,7 @@ class Camera(FrameSource):
         self.properties = prop_set
         self.threaded = threaded
         self.cfile = calibrationfile
+        self.running = False
         """
         In the camera onstructor, camera_index indicates which camera to connect to
         and props is a dictionary which can be used to set any camera attributes
@@ -303,7 +303,10 @@ class Camera(FrameSource):
 
     def _start(self,threaded):
         global _cameras
-        global _camera_polling_thread       
+        global _camera_polling_thread
+        if( self.running ):
+            return
+        
         self.capture = cv.CaptureFromCAM(self.index)
         if platform.system() == "Linux" and (self.properties.has_key("height") or cv.GrabFrame(self.capture) == False):
             import pygame.camera
@@ -313,7 +316,6 @@ class Camera(FrameSource):
                 self.capture = pygame.camera.Camera("/dev/video" + str(self.index), (self.properties['width'], self.properties['height']))
             else:
                 self.capture = pygame.camera.Camera("/dev/video" + str(self.index))
-                
             self.capture.start()
             time.sleep(0)
             self.pygame_buffer = self.capture.get_image()
@@ -333,7 +335,6 @@ class Camera(FrameSource):
 
         if (threaded):
             self.threaded = True
-            print("starting thread")
             _cameras.append(self)
             if (not _camera_polling_thread):
                 _camera_polling_thread = FrameBufferThread()
@@ -342,7 +343,8 @@ class Camera(FrameSource):
                 time.sleep(0) #yield to thread
         else:
             self.threaded = False
-        
+
+        self.running = True       
         if self.cfile:
             self.loadCalibration(self.cfile)
         
@@ -352,24 +354,33 @@ class Camera(FrameSource):
         Stop the camera thread - camera will need to be re-initialized
         This kills the thread: http://bit.ly/oCzEXu
         """
-        if( self.threaded ):
-            _camera_polling_thread.stop()
-            time.sleep(0.1)
-            del self.capture
-            self.capture = None
-        elif( self.capture is not None):
-            del self.capture
-            self.capture = None
+        global _cameras
+        global _camera_polling_thread
+        if( self.running ):
+            if( self.threaded and _camera_polling_thread is not None ):
+                _camera_polling_thread.stop()
+                time.sleep(0.1)
+                _camera_polling_thread.join()
+                time.sleep(0.1)
+                _camera_polling_thread = None
+                del self.capture
+                self.capture = None
+                self.running = False
+            elif( self.capture is not None):
+                del self.capture
+                self.capture = None
+                self.running = False
     
     def restart(self,threaded=True):
         """
         restart the camera thread after it has been stoped.
         """
-        if( self.capture is None):
-            self._start(threaded)
-        else:
-            self.stop()
-            selp._start(threaded)
+        if( not self.running ):
+            if( self.capture is None):
+                self._start(threaded)
+            else:
+                self.stop()
+                self._start(threaded)
     
     def getProperty(self, prop):
         """
