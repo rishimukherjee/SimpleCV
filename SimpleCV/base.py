@@ -12,6 +12,11 @@ import types
 import SocketServer
 import threading
 import tempfile
+import zipfile
+import pickle
+import glob #for directory scanning
+import abc #abstract base class
+
 from copy import copy
 from math import sqrt, atan2
 from pkg_resources import load_entry_point
@@ -19,12 +24,16 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 from types import IntType, LongType, FloatType, InstanceType
 from cStringIO import StringIO
 
+
 # SimpleCV library includes
 import cv
 import numpy as np
 import scipy.spatial.distance as spsd
+import scipy.cluster.vq as cluster #for kmeans
 from numpy import linspace
 from scipy.interpolate import UnivariateSpline
+import pygame as pg
+
 
 
 #optional libraries
@@ -63,6 +72,17 @@ try:
 except ImportError:
     OCR_ENABLED = False
 
+
+ORANGE_ENABLED = True
+try:
+    import orange
+    import orngTest #for cross validation
+    import orngStat
+    import orngEnsemble # for bagging / boosting
+    
+except ImportError:
+    ORANGE_ENABLED = False
+
 #couple quick typecheck helper functions
 def is_number(n):
     """
@@ -99,7 +119,34 @@ def find(f, seq):
             return True
     return False
 
+def download_and_extract(URL):
+    """
+    This function takes in a URL for a zip file, extracts it and returns
+    the temporary path it was extracted to
+    """
+    if URL == None:
+        warnings.warn("Please provide URL")
+        return None
 
+    tmpdir = tempfile.mkdtemp()
+    filename = os.path.basename(URL)
+    path = tmpdir + "/" + filename
+    zdata = urllib2.urlopen(URL)
+
+    print "Saving file to disk please wait...."
+    with open(path, "wb") as local_file:
+        local_file.write(zdata.read())
+
+    zfile = zipfile.ZipFile(path)    
+    print "Extracting zipfile"
+    try:
+        zfile.extractall(tmpdir)
+    except:
+        warnings.warn("Couldn't extract zip file")
+        return None
+
+    return tmpdir
+    
 def npArray2cvMat(inputMat, dataType=cv.CV_32FC1):
     """
     This function is a utility for converting numpy arrays to the cv.cvMat format.
@@ -121,4 +168,5 @@ def npArray2cvMat(inputMat, dataType=cv.CV_32FC1):
     else:
         warnings.warn("MatrixConversionUtil: the input matrix type is not supported")
 
-
+#supported image formats regular expression
+IMAGE_FORMATS = ('*.bmp','*.dcx','*.eps','*.ps','*.gif','*.im','*.jpg','*.jpe','*.jpeg','*.pcd','*.pcx','*.png','*.pbm','*.pgm','*.ppm','*.psd','*.tif','*.tiff','*.xbm','*.xpm')
