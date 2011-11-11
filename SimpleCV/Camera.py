@@ -1,5 +1,4 @@
 # SimpleCV Cameras & Devices
-
 #load system libraries
 from SimpleCV.base import *
 from SimpleCV.ImageClass import Image 
@@ -9,7 +8,7 @@ import platform
 _cameras = [] 
 _camera_polling_thread = ""
  
-
+#We're going to make this multiprocess compliant. 
 class FrameBufferThread(threading.Thread):
     """
     This is a helper thread which continually debuffers the camera frames.  If
