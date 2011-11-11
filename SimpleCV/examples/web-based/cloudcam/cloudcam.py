@@ -33,7 +33,9 @@ class CloudCam(object):
         return tmpname
     
     def process(self, filepath):
-        img = Image(filepath) # load the image into SimpleCV
+        cam = Camera()
+        img = cam.getImage()
+        #img = Image(filepath) # load the image into SimpleCV
         img = img.edges() # Get the edges
         img.save(filepath) # save the temporary image
         return
