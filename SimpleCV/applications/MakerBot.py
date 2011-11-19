@@ -5,7 +5,7 @@ from datetime import datetime
 from SimpleCV import *
 from SimpleCV.Segmentation import *
 
-js0 = JpegStreamer(hostandport = "192.168.0.104:8080")
+js0 = JpegStreamer(hostandport = "192.168.1.155:8080")
 cam0 = Camera(0)
 img0 = cam0.getImage()
 count = 0
