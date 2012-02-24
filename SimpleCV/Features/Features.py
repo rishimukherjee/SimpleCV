@@ -752,8 +752,9 @@ class Feature(object):
                     if( point[1] <= np.max((p1[1],p2[1])) ):
                         if( point[0] <= np.max((p1[0],p2[0])) ):
                             if( p1[1] != p2[1] ):
-                                test = float((point[1]-p1[1])*(p2[0]-p1[0]))/float(((p2[1]-p1[1])+p1[0]))
-                                if( p1[0] == p2[0] or point[0] <= test ):
+                                denom = float(((p2[1]-p1[1])+p1[0]))
+                                test = float((point[1]-p1[1])*(p2[0]-p1[0]))
+                                if( p1[0] == p2[0] or (denom != 0.00 and point[0] <= (test/denom)) ):
                                     counter = counter + 1
                 p1 = p2                
                                     
