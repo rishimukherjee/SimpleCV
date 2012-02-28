@@ -4506,6 +4506,52 @@ class Image:
         retVal[skeleton] = 255
         return Image(retVal)
 
+    def findSkeleton(self, radius=5, threshval = -1, minsize=10, maxsize=0, threshblocksize=0, threshconstant=5):
+        """
+        Summary:
+        This method finds the skeletons of each of the blobs in an image and returns them as blobs.
+        See the skeletonize() method for more information.
+
+        Parameters:
+        radius          - the radius parameter for the skeleton function
+        threshval       - the threshold for the image, -1 uses the automatic threshold
+        minsize         - the minimum size in pixels of the returned blobs
+        maxsize         - the maximum size in pixels of the returned blobs, 0 pegs this to the image size
+        threshblocksize - the block size parameter for auto threshold.
+        threshconstant  - the threshold constant for auto threshold. 
+
+        Returns:
+        A feature set of blobs corresponding to the skeleton of the image. If no skeleton is found the method
+        returns none.
+
+        Example:
+        >>>> img = Image("RedDog1.jpg")
+        >>>> s = img.findSkeleton()
+        >>>> s.draw()
+        
+        Notes:
+        KAS - I am time boxing this but a better solution is to fit the skeleton to spline or a set
+        of line segments so we can track articulation. This may be 1.4 / 2.0 feature.
+        http://www.scipy.org/Cookbook/Interpolation        
+
+        See Also:
+        ImageClass.binarize()
+        ImageClass.findBlobs()
+        """
+        if (maxsize == 0):  
+            maxsize = self.width * self.height / 2
+        #create a single channel image, thresholded to parameters
+        white_skeleton = self.binarize(threshval, 255, threshblocksize, threshconstant).invert()
+        white_skeleton = white_skeleton.skeletonize(radius=radius)
+        blobmaker = BlobMaker()
+        blobs = blobmaker.extractFromBinary(white_skeleton,self, minsize = minsize, maxsize = maxsize)
+    
+        if not len(blobs):
+            return None
+            
+        return FeatureSet(blobs).sortArea()
+
+
     def __getstate__(self):
         return dict( size = self.size(), colorspace = self._colorSpace, image = self.applyLayers().getBitmap().tostring() )
         

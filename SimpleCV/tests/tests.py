@@ -1540,3 +1540,14 @@ def test_skeletonize():
   s = img.skeletonize()
   s2 = img.skeletonize(10)
   pass
+
+def test_findSkeleton():
+  img = Image(logo)
+  s1 = img.findSkeleton()
+  s2 = img.findSkeleton(minsize = 20)
+  s3 = img.findSkeleton(radius = 7)
+  s4 = img.findSkeleton( threshval = 128 )
+  if( len(s1) > 0 and len(s2) > 0 and len(s3) > 0 and len(s4) > 0 ):
+    pass
+  else:
+    assert False
