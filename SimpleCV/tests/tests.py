@@ -1576,7 +1576,14 @@ def test_image_webp_save():
     else:
       assert False
 
-
+def test_image_slice():
+  img = Image("../sampleimages/blockhead.png")
+  I = img.findLines()
+  I2 = I[0:10]
+  if type(I2) == list:
+    assert False
+  else:
+    pass
 
 
   
